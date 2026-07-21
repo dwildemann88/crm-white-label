@@ -10,6 +10,8 @@ import {
   LayoutDashboard,
   Menu,
   MessageCircle,
+  PanelLeftClose,
+  PanelLeftOpen,
   PlugZap,
   Search,
   UserCog,
@@ -17,7 +19,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useCrm } from "../app/CrmContext";
 import { cx, formatDateTime } from "../core/utils";
 import { Avatar } from "./Common";
@@ -133,6 +135,22 @@ export function AppShell({
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [globalQuery, setGlobalQuery] = useState("");
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+
+    return (
+      window.localStorage.getItem(
+        "projem-flow-sidebar-collapsed",
+      ) === "true"
+    );
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      "projem-flow-sidebar-collapsed",
+      String(collapsed),
+    );
+  }, [collapsed]);
 
   const organization = data?.organizations.find(
     (item) => item.id === data.session?.organizationId,
@@ -171,7 +189,7 @@ export function AppShell({
 
   return (
     <div
-      className="app-shell"
+      className={cx("app-shell", collapsed && "sidebar-collapsed")}
       style={
         {
           "--brand-primary": organization?.branding.primaryColor || "#ffd43b",
@@ -181,7 +199,7 @@ export function AppShell({
         } as React.CSSProperties
       }
     >
-      <aside className={cx("sidebar", mobile && "open")}>
+      <aside className={cx("sidebar", mobile && "open", collapsed && "collapsed")}>
         <div className="brand-wrap">
           <div className="brand-mark">
             {organization?.branding.logoUrl ? (
@@ -193,12 +211,35 @@ export function AppShell({
               <Zap size={22} strokeWidth={2.6} />
             )}
           </div>
-          <div>
+          <div className="brand-copy">
             <strong>
               {organization?.branding.productName || "PROJEM FLOW"}
             </strong>
             <span>CRM COMERCIAL</span>
           </div>
+
+          <button
+            type="button"
+            className="icon-button sidebar-toggle"
+            onClick={() => setCollapsed((value) => !value)}
+            aria-label={
+              collapsed
+                ? "Expandir barra lateral"
+                : "Recolher barra lateral"
+            }
+            title={
+              collapsed
+                ? "Expandir barra lateral"
+                : "Recolher barra lateral"
+            }
+          >
+            {collapsed ? (
+              <PanelLeftOpen size={18} />
+            ) : (
+              <PanelLeftClose size={18} />
+            )}
+          </button>
+
           <button
             className="icon-button sidebar-close"
             onClick={() => setMobile(false)}
@@ -217,9 +258,11 @@ export function AppShell({
                 key={item.id}
                 className={cx("nav-item", page === item.id && "active")}
                 onClick={() => goTo(item.id)}
+                aria-label={item.label}
+                title={collapsed ? item.label : undefined}
               >
                 <Icon size={19} />
-                <span>{item.label}</span>
+                <span className="nav-label">{item.label}</span>
                 {item.id === "inbox" && (
                   <b>
                     {data?.conversations.reduce(
@@ -234,11 +277,20 @@ export function AppShell({
         </nav>
 
         <div className="sidebar-bottom">
-          <div className="system-status">
+          <div
+            className="system-status"
+            title={
+              import.meta.env.VITE_DATA_PROVIDER === "rest"
+                ? "Backend conectado"
+                : "Ambiente demonstrativo"
+            }
+          >
             <span className="status-dot" />
-            {import.meta.env.VITE_DATA_PROVIDER === "rest"
-              ? "Backend conectado"
-              : "Ambiente demonstrativo"}
+            <span className="system-status-label">
+              {import.meta.env.VITE_DATA_PROVIDER === "rest"
+                ? "Backend conectado"
+                : "Ambiente demonstrativo"}
+            </span>
           </div>
 
           <div className="profile-switcher">
@@ -247,11 +299,11 @@ export function AppShell({
               onClick={() => setProfileOpen((value) => !value)}
             >
               <Avatar user={currentUser} />
-              <div>
+              <div className="profile-copy">
                 <strong>{currentUser?.name}</strong>
                 <span>{currentUser?.roleLabel}</span>
               </div>
-              <Users size={16} />
+              <Users className="profile-switch-icon" size={16} />
             </button>
             {profileOpen && import.meta.env.VITE_DATA_PROVIDER !== "rest" && (
               <div className="profile-menu">

@@ -9,8 +9,19 @@ export type IntegrationProvider =
   | "website";
 export type IntegrationStatus = "connected" | "attention" | "disconnected";
 export type MessageDirection = "inbound" | "outbound" | "internal";
+export type MessageType =
+  | "text"
+  | "image"
+  | "audio"
+  | "video"
+  | "document"
+  | "location"
+  | "contact"
+  | "interactive";
+
 export type MessageStatus =
   | "received"
+  | "queued"
   | "sent"
   | "delivered"
   | "read"
@@ -151,6 +162,13 @@ export interface TagDefinition {
   color: string;
 }
 
+export interface WhatsAppWindow {
+  isOpen: boolean;
+  requiresTemplate: boolean;
+  lastInboundAt: string | null;
+  expiresAt: string | null;
+}
+
 export interface Conversation {
   id: string;
   organizationId: string;
@@ -161,6 +179,16 @@ export interface Conversation {
   unread: number;
   lastMessageAt: string;
   signaturePending: boolean;
+  whatsappWindow?: WhatsAppWindow;
+}
+
+export interface MessageMedia {
+  externalId?: string;
+  storagePath?: string;
+  url?: string;
+  mimeType?: string;
+  fileName?: string;
+  pending: boolean;
 }
 
 export interface Message {
@@ -172,6 +200,36 @@ export interface Message {
   body: string;
   status: MessageStatus;
   createdAt: string;
+  messageType?: MessageType;
+  media?: MessageMedia;
+}
+
+
+export interface WhatsAppMediaPrepareInput {
+  file: File;
+  caption?: string;
+}
+
+export interface WhatsAppPreparedMediaMessage {
+  messageId: string;
+  conversationId: string;
+  messageType: Extract<
+    MessageType,
+    "image" | "audio" | "video" | "document"
+  >;
+  bucket: string;
+  storagePath: string;
+  mimeType: string;
+  fileName: string;
+  sizeBytes: number;
+  status: "queued";
+}
+
+export interface WhatsAppTemplateSendInput {
+  templateName: string;
+  languageCode: string;
+  parameters: string[];
+  bodyPreview: string;
 }
 
 export interface IntegrationFieldMap {

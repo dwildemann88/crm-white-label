@@ -4394,3 +4394,900 @@ textarea {
     width: 100%;
   }
 }
+
+/* ==========================================================
+   ETAPA 12Z — STATUS VISUAL DAS MENSAGENS
+   Cole no FINAL de src/styles.css
+   ========================================================== */
+
+.message-bubble .message-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.message-bubble.incoming .message-meta {
+  justify-content: flex-start;
+}
+
+.message-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.message-status svg {
+  flex: 0 0 auto;
+}
+
+.message-status.queued {
+  color: #aab2bd;
+}
+
+.message-status.queued svg {
+  animation: crm-message-status-spin 0.9s linear infinite;
+}
+
+.message-status.sent {
+  color: #aab2bd;
+}
+
+.message-status.delivered {
+  color: #d8dde3;
+}
+
+.message-status.read {
+  color: #5ec8f2;
+}
+
+.message-status.failed {
+  color: #ff8b8b;
+}
+
+.message-bubble.outgoing.status-queued {
+  opacity: 0.84;
+}
+
+.message-bubble.outgoing.status-failed {
+  border-color: rgba(255, 107, 107, 0.62);
+  box-shadow: inset 3px 0 0 rgba(255, 107, 107, 0.82);
+}
+
+@keyframes crm-message-status-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 650px) {
+  .message-status > span {
+    display: none;
+  }
+
+  .message-bubble .message-meta {
+    gap: 5px;
+  }
+}
+/* ==========================================================
+   ETAPA 12AA-B — MÍDIAS RECEBIDAS NO CHAT
+   Mantém o restante do design sem alterações globais.
+   ========================================================== */
+
+.message-bubble.has-media {
+  width: min(76%, 470px);
+  max-width: min(76%, 470px);
+  padding: 7px;
+  overflow: hidden;
+}
+
+.message-bubble.has-media > p {
+  padding: 8px 7px 2px;
+}
+
+.message-bubble.has-media > .message-meta {
+  padding: 0 7px 3px;
+}
+
+.message-media-image {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: #11161c;
+  color: #fff;
+  text-decoration: none;
+}
+
+.message-media-image img {
+  display: block;
+  width: 100%;
+  max-height: 430px;
+  object-fit: cover;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.035),
+      transparent
+    ),
+    #11161c;
+}
+
+.message-media-image > span {
+  position: absolute;
+  right: 9px;
+  bottom: 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 29px;
+  padding: 0 9px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 999px;
+  background: rgba(8, 11, 15, 0.76);
+  backdrop-filter: blur(12px);
+  color: #f2f5f8;
+  font-size: 10px;
+  font-weight: 750;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.message-media-image:hover > span,
+.message-media-image:focus-visible > span {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.message-media-audio {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-height: 58px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.035),
+      transparent 55%
+    ),
+    #1b222a;
+}
+
+.message-media-audio audio {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+}
+
+.message-media-icon,
+.message-media-document-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid
+    color-mix(
+      in srgb,
+      var(--brand-primary) 28%,
+      rgba(255, 255, 255, 0.08)
+    );
+  border-radius: 9px;
+  background:
+    color-mix(
+      in srgb,
+      var(--brand-primary) 10%,
+      #171d24
+    );
+  color: var(--brand-primary);
+  flex: 0 0 auto;
+}
+
+.message-media-video {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: #0c1015;
+}
+
+.message-media-video video {
+  display: block;
+  width: 100%;
+  max-height: 440px;
+  background: #050607;
+}
+
+.message-media-video > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 9px;
+  color: #aab3bd;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.message-media-document {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 10px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.035),
+      transparent 56%
+    ),
+    #1b222a;
+  color: #eef2f5;
+  text-decoration: none;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.message-media-document:hover {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--brand-primary) 42%,
+      rgba(255, 255, 255, 0.12)
+    );
+  background:
+    color-mix(
+      in srgb,
+      var(--brand-primary) 7%,
+      #202730
+    );
+  transform: translateY(-1px);
+}
+
+.message-media-document-copy {
+  min-width: 0;
+}
+
+.message-media-document-copy strong,
+.message-media-document-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message-media-document-copy strong {
+  color: #f1f4f7;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.message-media-document-copy small {
+  margin-top: 4px;
+  color: #909aa5;
+  font-size: 10px;
+}
+
+.message-media-document > svg {
+  color: #9fa8b2;
+}
+
+.message-media-pending {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 51px;
+  padding: 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  color: #a8b0ba;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.message-media-pending svg {
+  color: var(--brand-primary);
+  animation: crm-message-status-spin 0.9s linear infinite;
+}
+
+@media (max-width: 650px) {
+  .message-bubble.has-media {
+    width: min(88%, 470px);
+    max-width: min(88%, 470px);
+  }
+
+  .message-media-image img {
+    max-height: 360px;
+  }
+
+  .message-media-image > span {
+    opacity: 1;
+    transform: none;
+  }
+
+  .message-media-audio {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .message-media-icon,
+  .message-media-document-icon {
+    width: 32px;
+    height: 32px;
+  }
+}
+/* ==========================================================
+   PROJEM FLOW — AJUSTES RÁPIDOS DE USABILIDADE
+   1. Preview de mídia sem corte/compressão visual
+   2. Kanban com rolagem própria e barra horizontal acessível
+   Cole no FINAL de src/styles.css
+   ========================================================== */
+
+/* ----------------------------------------------------------
+   CHAT — preview de imagens
+   ---------------------------------------------------------- */
+
+.message-bubble.has-media {
+  width: min(88%, 680px);
+  max-width: min(88%, 680px);
+}
+
+.message-media-image {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  max-height: min(70dvh, 720px);
+  background: #0b0d10;
+}
+
+.message-media-image img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: min(70dvh, 720px);
+  object-fit: contain;
+  object-position: center;
+  margin: 0 auto;
+}
+
+/* Evita que regras antigas forcem altura ou proporção artificial. */
+.message-bubble.has-media img {
+  aspect-ratio: auto;
+  min-height: 0;
+}
+
+/* Em telas menores, a mídia usa praticamente toda a largura útil. */
+@media (max-width: 760px) {
+  .message-bubble.has-media {
+    width: 94%;
+    max-width: 94%;
+  }
+
+  .message-media-image {
+    min-height: 140px;
+    max-height: 62dvh;
+  }
+
+  .message-media-image img {
+    max-height: 62dvh;
+  }
+}
+
+/* ----------------------------------------------------------
+   KANBAN — viewport próprio
+   ---------------------------------------------------------- */
+
+.kanban-board {
+  height: calc(100dvh - 190px);
+  min-height: 440px;
+  overflow: auto;
+  align-items: flex-start;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+  padding-bottom: 12px;
+}
+
+/* Cada coluna rola verticalmente junto com o quadro, sem esticar
+   artificialmente toda a página. */
+.kanban-column {
+  align-self: flex-start;
+}
+
+/* Mantém o cabeçalho da etapa visível quando a coluna possui muitos leads. */
+.kanban-column-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 3px 0 7px;
+  background: #101012;
+}
+
+/* A barra horizontal ganha uma área de clique mais clara. */
+.kanban-board::-webkit-scrollbar {
+  width: 10px;
+  height: 12px;
+}
+
+.kanban-board::-webkit-scrollbar-thumb {
+  background: #3b3b41;
+  border: 3px solid #101012;
+  border-radius: 999px;
+}
+
+.kanban-board::-webkit-scrollbar-thumb:hover {
+  background: #55555d;
+}
+
+.kanban-board::-webkit-scrollbar-corner {
+  background: #101012;
+}
+
+@media (max-width: 760px) {
+  .kanban-board {
+    height: calc(100dvh - 165px);
+    min-height: 380px;
+    scroll-snap-type: x proximity;
+  }
+
+  .kanban-column {
+    scroll-snap-align: start;
+  }
+}
+/* ==========================================================
+   PROJEM FLOW — ETAPA 12AA-D
+   Barra lateral recolhível + refinamentos de usabilidade
+   Cole no FINAL de src/styles.css
+   ========================================================== */
+
+.sidebar,
+.main-area {
+  transition:
+    width 0.22s ease,
+    margin-left 0.22s ease,
+    padding 0.22s ease;
+}
+
+.sidebar-toggle {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.brand-copy,
+.nav-label,
+.system-status-label,
+.profile-copy,
+.profile-switch-icon {
+  transition:
+    opacity 0.14s ease,
+    visibility 0.14s ease;
+}
+
+@media (min-width: 901px) {
+  .app-shell.sidebar-collapsed .sidebar {
+    width: 82px;
+    padding-inline: 12px;
+  }
+
+  .app-shell.sidebar-collapsed .main-area {
+    margin-left: 82px;
+  }
+
+  .app-shell.sidebar-collapsed .brand-wrap {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .app-shell.sidebar-collapsed .brand-copy,
+  .app-shell.sidebar-collapsed .nav-caption,
+  .app-shell.sidebar-collapsed .nav-label,
+  .app-shell.sidebar-collapsed .system-status-label,
+  .app-shell.sidebar-collapsed .profile-copy,
+  .app-shell.sidebar-collapsed .profile-switch-icon {
+    display: none;
+  }
+
+  .app-shell.sidebar-collapsed .sidebar-toggle {
+    position: absolute;
+    top: 27px;
+    right: -17px;
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: #19191c;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  }
+
+  .app-shell.sidebar-collapsed .sidebar-nav {
+    margin-top: 15px;
+  }
+
+  .app-shell.sidebar-collapsed .nav-item {
+    justify-content: center;
+    gap: 0;
+    min-height: 44px;
+    padding-inline: 0;
+  }
+
+  .app-shell.sidebar-collapsed .nav-item.active::before {
+    left: -12px;
+  }
+
+  .app-shell.sidebar-collapsed .nav-item b {
+    position: absolute;
+    top: 3px;
+    right: 1px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    font-size: 10px;
+  }
+
+  .app-shell.sidebar-collapsed .system-status {
+    justify-content: center;
+    min-height: 42px;
+    padding-inline: 0;
+  }
+
+  .app-shell.sidebar-collapsed .profile-mini {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .app-shell.sidebar-collapsed .profile-menu {
+    left: calc(100% + 14px);
+    right: auto;
+    bottom: 0;
+    width: 270px;
+  }
+}
+
+@media (max-width: 900px) {
+  .sidebar-toggle {
+    display: none;
+  }
+}
+
+/* Kanban: feedback quando uma etapa está vazia. */
+.kanban-empty-column {
+  min-height: 86px;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Foco visível para navegação por teclado no quadro. */
+.kanban-board:focus-visible {
+  outline: 2px solid
+    color-mix(
+      in srgb,
+      var(--brand-primary) 60%,
+      transparent
+    );
+  outline-offset: 4px;
+  border-radius: 10px;
+}
+/* ==========================================================
+   PROJEM FLOW — CORREÇÃO DO PREVIEW DE IMAGENS NO CHAT
+   Cole no FINAL de src/styles.css
+   ========================================================== */
+
+/* Tamanho semelhante ao WhatsApp Web, sem transformar a imagem
+   em uma faixa horizontal nem ocupar a conversa inteira. */
+.message-bubble.has-media.media-image {
+  width: min(78%, 390px) !important;
+  max-width: min(78%, 390px) !important;
+}
+
+.message-bubble.has-media.media-image .message-media-image {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 280px !important;
+  min-height: 280px !important;
+  max-height: 280px !important;
+
+  overflow: hidden !important;
+  border-radius: 11px !important;
+  background: #0b0e12 !important;
+}
+
+.message-bubble.has-media.media-image .message-media-image img {
+  display: block !important;
+
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+
+  object-fit: contain !important;
+  object-position: center !important;
+  aspect-ratio: auto !important;
+  margin: 0 !important;
+}
+
+/* Imagens muito largas continuam visíveis por completo, com fundo
+   discreto nas áreas vazias. */
+.message-bubble.has-media.media-image .message-media-image::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.025),
+      transparent 55%
+    );
+}
+
+/* Mantém o botão de abrir acima da imagem. */
+.message-bubble.has-media.media-image .message-media-image > span {
+  z-index: 2;
+}
+
+/* Celular */
+@media (max-width: 760px) {
+  .message-bubble.has-media.media-image {
+    width: 92% !important;
+    max-width: 92% !important;
+  }
+
+  .message-bubble.has-media.media-image .message-media-image {
+    height: 240px !important;
+    min-height: 240px !important;
+    max-height: 240px !important;
+  }
+}
+
+/* ==========================================================
+   PROJEM FLOW — CORREÇÃO DEFINITIVA DAS MÍDIAS COLAPSADAS
+   Causa: os balões são flex-items e estavam sendo comprimidos
+   verticalmente para caber dentro da área de mensagens.
+   ========================================================== */
+
+/* A área continua rolável, mas os balões não podem encolher. */
+.messages-area {
+  align-items: stretch;
+}
+
+.messages-area > .message-bubble,
+.messages-area > .internal-message {
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
+}
+
+/* Mantém alinhamento original das mensagens. */
+.messages-area > .message-bubble.incoming {
+  align-self: flex-start;
+}
+
+.messages-area > .message-bubble.outgoing {
+  align-self: flex-end;
+}
+
+/* Mídias nunca devem participar do encolhimento vertical do flex. */
+.message-bubble.has-media,
+.message-media-image,
+.message-media-audio,
+.message-media-video,
+.message-media-document,
+.message-media-pending {
+  flex-shrink: 0 !important;
+}
+
+/* Imagens: preview estável, proporcional e clicável. */
+.message-bubble.has-media.media-image {
+  width: min(78%, 420px) !important;
+  max-width: min(78%, 420px) !important;
+}
+
+.message-bubble.has-media.media-image .message-media-image {
+  position: relative;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 100% !important;
+  height: 280px !important;
+  min-height: 280px !important;
+  max-height: 280px !important;
+  overflow: hidden;
+  border-radius: 11px;
+  background: #0b0e12;
+}
+
+.message-bubble.has-media.media-image .message-media-image img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  margin: 0 !important;
+}
+
+/* Áudio: impede que o player vire uma faixa de poucos pixels. */
+.message-bubble.has-media.media-audio {
+  width: min(78%, 430px) !important;
+  max-width: min(78%, 430px) !important;
+}
+
+.message-bubble.has-media.media-audio .message-media-audio {
+  width: 100%;
+  min-height: 58px !important;
+}
+
+.message-bubble.has-media.media-audio audio {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 36px !important;
+  min-height: 36px !important;
+}
+
+/* Vídeos e documentos seguem o mesmo princípio. */
+.message-bubble.has-media.media-video {
+  width: min(78%, 480px) !important;
+  max-width: min(78%, 480px) !important;
+}
+
+.message-bubble.has-media.media-document {
+  width: min(78%, 430px) !important;
+  max-width: min(78%, 430px) !important;
+}
+
+@media (max-width: 760px) {
+  .message-bubble.has-media.media-image,
+  .message-bubble.has-media.media-audio,
+  .message-bubble.has-media.media-video,
+  .message-bubble.has-media.media-document {
+    width: 92% !important;
+    max-width: 92% !important;
+  }
+
+  .message-bubble.has-media.media-image .message-media-image {
+    height: 240px !important;
+    min-height: 240px !important;
+    max-height: 240px !important;
+  }
+}
+
+/* ==========================================================
+   PROJEM FLOW — ETAPA 12AB-C
+   Seleção, prévia e envio de anexos no Inbox
+   Cole no FINAL de src/styles.css
+   ========================================================== */
+
+.chat-file-input {
+  display: none !important;
+}
+
+.chat-attachment-preview,
+.chat-attachment-error {
+  grid-column: 1 / -1;
+}
+
+.chat-attachment-preview {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: #1b222a;
+}
+
+.chat-attachment-visual {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: #0d1116;
+  color: var(--brand-primary);
+}
+
+.chat-attachment-visual img,
+.chat-attachment-visual video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.chat-attachment-copy {
+  min-width: 0;
+}
+
+.chat-attachment-copy strong,
+.chat-attachment-copy span,
+.chat-attachment-copy small {
+  display: block;
+}
+
+.chat-attachment-copy strong {
+  overflow: hidden;
+  color: #f2f5f8;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-attachment-copy span {
+  margin-top: 4px;
+  overflow: hidden;
+  color: #929ca7;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-attachment-copy small {
+  margin-top: 5px;
+  color: #d7ba62;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.chat-compose .chat-attachment-remove {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+}
+
+.chat-attachment-error {
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 107, 107, 0.38);
+  border-radius: 8px;
+  background: rgba(255, 107, 107, 0.08);
+  color: #ffabab;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.chat-send-spinner {
+  animation: crm-message-status-spin 0.9s linear infinite;
+}
+
+@media (max-width: 650px) {
+  .chat-attachment-preview {
+    grid-template-columns: 46px minmax(0, 1fr) 32px;
+  }
+
+  .chat-attachment-visual {
+    width: 46px;
+    height: 46px;
+  }
+}

@@ -24,6 +24,9 @@ import type {
   TaskInput,
   User,
   UserInput,
+  WhatsAppMediaPrepareInput,
+  WhatsAppPreparedMediaMessage,
+  WhatsAppTemplateSendInput,
 } from "../core/types";
 import { supabase } from "./supabase/client";
 import { getCrmBootstrap, type BootstrapMembership } from "./supabase/bootstrap";
@@ -31,6 +34,246 @@ import { getCrmBootstrap, type BootstrapMembership } from "./supabase/bootstrap"
 const notReady = (feature: string): never => {
   throw new Error(`${feature} ainda não foi conectado ao Supabase.`);
 };
+
+const WHATSAPP_MEDIA_BUCKET = "crm-whatsapp-media";
+const WHATSAPP_MEDIA_URL_TTL_SECONDS = 6 * 60 * 60;
+
+
+type OutboundWhatsAppMediaType =
+  WhatsAppPreparedMediaMessage["messageType"];
+
+interface OutboundWhatsAppMediaDescriptor {
+  messageType: OutboundWhatsAppMediaType;
+  mimeType: string;
+  maxBytes: number;
+}
+
+const OUTBOUND_WHATSAPP_MEDIA_LIMITS: Record<
+  OutboundWhatsAppMediaType,
+  number
+> = {
+  image: 5 * 1024 * 1024,
+  audio: 16 * 1024 * 1024,
+  video: 16 * 1024 * 1024,
+  document: 20 * 1024 * 1024,
+};
+
+const OUTBOUND_WHATSAPP_MIME_TYPES: Record<
+  OutboundWhatsAppMediaType,
+  Set<string>
+> = {
+  image: new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+  ]),
+  audio: new Set([
+    "audio/aac",
+    "audio/amr",
+    "audio/mpeg",
+    "audio/mp4",
+    "audio/ogg",
+  ]),
+  video: new Set([
+    "video/mp4",
+    "video/3gpp",
+  ]),
+  document: new Set([
+    "text/plain",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  ]),
+};
+
+const OUTBOUND_WHATSAPP_MIME_BY_EXTENSION: Record<
+  string,
+  string
+> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  aac: "audio/aac",
+  amr: "audio/amr",
+  mp3: "audio/mpeg",
+  m4a: "audio/mp4",
+  ogg: "audio/ogg",
+  mp4: "video/mp4",
+  "3gp": "video/3gpp",
+  txt: "text/plain",
+  pdf: "application/pdf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+};
+
+function describeOutboundWhatsAppMedia(
+  file: File,
+): OutboundWhatsAppMediaDescriptor {
+  if (!(file instanceof File)) {
+    throw new Error(
+      "Selecione um arquivo válido.",
+    );
+  }
+
+  if (file.size <= 0) {
+    throw new Error(
+      "O arquivo selecionado está vazio.",
+    );
+  }
+
+  const extension =
+    file.name
+      .split(".")
+      .pop()
+      ?.trim()
+      .toLowerCase() ?? "";
+
+  const mimeType =
+    file.type
+      .split(";")[0]
+      .trim()
+      .toLowerCase() ||
+    OUTBOUND_WHATSAPP_MIME_BY_EXTENSION[
+      extension
+    ] ||
+    "";
+
+  const messageType = (
+    Object.entries(
+      OUTBOUND_WHATSAPP_MIME_TYPES,
+    ) as Array<
+      [
+        OutboundWhatsAppMediaType,
+        Set<string>,
+      ]
+    >
+  ).find(([, mimeTypes]) =>
+    mimeTypes.has(mimeType),
+  )?.[0];
+
+  if (!messageType) {
+    throw new Error(
+      "Este formato de arquivo não é aceito para envio pelo WhatsApp.",
+    );
+  }
+
+  const maxBytes =
+    OUTBOUND_WHATSAPP_MEDIA_LIMITS[
+      messageType
+    ];
+
+  if (file.size > maxBytes) {
+    const maxMegabytes =
+      Math.floor(
+        maxBytes /
+          (1024 * 1024),
+      );
+
+    throw new Error(
+      `O arquivo excede o limite inicial de ${maxMegabytes} MB para ${messageType === "image" ? "imagens" : messageType === "audio" ? "áudios" : messageType === "video" ? "vídeos" : "documentos"}.`,
+    );
+  }
+
+  return {
+    messageType,
+    mimeType,
+    maxBytes,
+  };
+}
+
+
+async function readEdgeFunctionError(
+  error: unknown,
+  fallback: string,
+): Promise<string> {
+  const candidate =
+    error as {
+      message?: unknown;
+      context?: unknown;
+    };
+
+  const context =
+    candidate?.context;
+
+  if (
+    typeof Response !== "undefined" &&
+    context instanceof Response
+  ) {
+    try {
+      const payload =
+        await context
+          .clone()
+          .json();
+
+      if (
+        payload &&
+        typeof payload === "object" &&
+        !Array.isArray(payload)
+      ) {
+        const record =
+          payload as Record<
+            string,
+            unknown
+          >;
+
+        const backendMessage =
+          [
+            record.error,
+            record.message,
+            record.details,
+            record.hint,
+          ].find(
+            (value) =>
+              typeof value ===
+                "string" &&
+              value.trim(),
+          );
+
+        if (
+          typeof backendMessage ===
+          "string"
+        ) {
+          return backendMessage.trim();
+        }
+      }
+    } catch {
+      try {
+        const responseText =
+          await context
+            .clone()
+            .text();
+
+        if (responseText.trim()) {
+          return responseText
+            .trim()
+            .slice(0, 1200);
+        }
+      } catch {
+        // Mantém o fallback abaixo.
+      }
+    }
+  }
+
+  if (
+    typeof candidate?.message ===
+      "string" &&
+    candidate.message.trim()
+  ) {
+    return candidate.message.trim();
+  }
+
+  return fallback;
+}
+
 
 const initials = (name: string) =>
   name
@@ -200,6 +443,7 @@ const mapFieldType = (value: string): CustomFieldType => {
 const mapMessageStatus = (value: string): MessageStatus => {
   if (
     value === "received" ||
+    value === "queued" ||
     value === "sent" ||
     value === "delivered" ||
     value === "read" ||
@@ -208,6 +452,24 @@ const mapMessageStatus = (value: string): MessageStatus => {
     return value;
   }
   return "sent";
+};
+
+const mapMessageType = (
+  value: string,
+): NonNullable<Message["messageType"]> => {
+  if (
+    value === "image" ||
+    value === "audio" ||
+    value === "video" ||
+    value === "document" ||
+    value === "location" ||
+    value === "contact" ||
+    value === "interactive"
+  ) {
+    return value;
+  }
+
+  return "text";
 };
 
 const datePart = (value: string) => value.slice(0, 10);
@@ -450,7 +712,7 @@ export class SupabaseCrmGateway implements CrmGateway {
         supabase
           .from("messages")
           .select(
-            "id,organization_id,conversation_id,sender_user_id,direction,body,status,sent_at,created_at,file_name,message_type",
+            "id,organization_id,conversation_id,sender_user_id,direction,body,status,sent_at,created_at,external_media_id,media_storage_path,mime_type,file_name,message_type,metadata",
           )
           .eq("organization_id", organizationId)
           .order("sent_at"),
@@ -471,6 +733,52 @@ export class SupabaseCrmGateway implements CrmGateway {
           .order("created_at", { ascending: false }),
       ),
     ]);
+
+    const mediaPaths = Array.from(
+      new Set(
+        messagesData
+          .map((item) =>
+            typeof item.media_storage_path === "string"
+              ? item.media_storage_path.trim()
+              : "",
+          )
+          .filter(Boolean),
+      ),
+    );
+
+    const signedMediaUrlByPath =
+      new Map<string, string>();
+
+    if (mediaPaths.length > 0) {
+      const {
+        data: signedMediaData,
+        error: signedMediaError,
+      } = await supabase.storage
+        .from(WHATSAPP_MEDIA_BUCKET)
+        .createSignedUrls(
+          mediaPaths,
+          WHATSAPP_MEDIA_URL_TTL_SECONDS,
+        );
+
+      if (signedMediaError) {
+        console.warn(
+          "Não foi possível assinar as mídias do WhatsApp:",
+          signedMediaError,
+        );
+      } else {
+        for (const item of signedMediaData ?? []) {
+          if (
+            typeof item.path === "string" &&
+            typeof item.signedUrl === "string"
+          ) {
+            signedMediaUrlByPath.set(
+              item.path,
+              item.signedUrl,
+            );
+          }
+        }
+      }
+    }
 
     const pipelineIds = pipelinesData.map((item) => item.id as string);
     const accessByUser = new Map<string, string[]>();
@@ -798,21 +1106,89 @@ for (const reminder of remindersData) {
       };
     });
 
-    const messages: Message[] = messagesData.map((item) => ({
-      id: item.id,
-      organizationId: item.organization_id,
-      conversationId: item.conversation_id,
-      senderUserId: item.sender_user_id,
-      direction: item.direction,
-      body:
-        item.body ??
-        item.file_name ??
-        (item.message_type === "image" ? "Imagem" : "Mensagem"),
-      status: mapMessageStatus(item.status),
-      createdAt:
-        item.sent_at ??
-        item.created_at,
-    }));
+    const messages: Message[] = messagesData.map((item) => {
+      const messageType =
+        mapMessageType(
+          item.message_type ?? "text",
+        );
+
+      const storagePath =
+        typeof item.media_storage_path === "string"
+          ? item.media_storage_path.trim()
+          : "";
+
+      const externalMediaId =
+        typeof item.external_media_id === "string"
+          ? item.external_media_id.trim()
+          : "";
+
+      const signedUrl =
+        storagePath
+          ? signedMediaUrlByPath.get(
+              storagePath,
+            ) ?? ""
+          : "";
+
+      const hasMedia =
+        Boolean(
+          storagePath ||
+          externalMediaId,
+        );
+
+      return {
+        id: item.id,
+        organizationId:
+          item.organization_id,
+        conversationId:
+          item.conversation_id,
+        senderUserId:
+          item.sender_user_id,
+        direction:
+          item.direction,
+        body:
+          item.body ??
+          item.file_name ??
+          (messageType === "image"
+            ? "Imagem recebida"
+            : messageType === "audio"
+              ? "Áudio recebido"
+              : messageType === "video"
+                ? "Vídeo recebido"
+                : messageType === "document"
+                  ? "Documento recebido"
+                  : "Mensagem"),
+        status:
+          mapMessageStatus(
+            item.status,
+          ),
+        createdAt:
+          item.sent_at ??
+          item.created_at,
+        messageType,
+        media: hasMedia
+          ? {
+              externalId:
+                externalMediaId ||
+                undefined,
+              storagePath:
+                storagePath ||
+                undefined,
+              url:
+                signedUrl ||
+                undefined,
+              mimeType:
+                item.mime_type ??
+                undefined,
+              fileName:
+                item.file_name ??
+                undefined,
+              pending:
+                !storagePath ||
+                !signedUrl,
+            }
+          : undefined,
+      };
+    });
 
     const notifications: NotificationItem[] = notificationsData.map((item) => ({
       id: item.id,
@@ -1570,6 +1946,407 @@ if (input.id) {
     );
   }
 }
+
+
+  async prepareWhatsAppMedia(
+    session: Session,
+    conversationId: string,
+    input: WhatsAppMediaPrepareInput,
+  ): Promise<WhatsAppPreparedMediaMessage> {
+    const file = input.file;
+    const caption =
+      input.caption?.trim() ?? "";
+
+    if (!conversationId.trim()) {
+      throw new Error(
+        "A conversa não foi informada.",
+      );
+    }
+
+    if (caption.length > 1024) {
+      throw new Error(
+        "A legenda deve possuir no máximo 1024 caracteres.",
+      );
+    }
+
+    const descriptor =
+      describeOutboundWhatsAppMedia(
+        file,
+      );
+
+    if (
+      descriptor.messageType === "audio" &&
+      caption
+    ) {
+      throw new Error(
+        "Áudios não aceitam legenda nesta etapa. Envie o texto separadamente.",
+      );
+    }
+
+    const {
+      data: preparationData,
+      error: preparationError,
+    } = await supabase.functions.invoke(
+      "prepare-whatsapp-media-upload",
+      {
+        body: {
+          organization_id:
+            session.organizationId,
+          conversation_id:
+            conversationId,
+          file_name:
+            file.name,
+          mime_type:
+            descriptor.mimeType,
+          size_bytes:
+            file.size,
+          caption:
+            caption || null,
+        },
+      },
+    );
+
+    if (preparationError) {
+      const backendMessage =
+        await readEdgeFunctionError(
+          preparationError,
+          "A Edge Function recusou a preparação do arquivo.",
+        );
+
+      console.error(
+        "[prepare-whatsapp-media-upload]",
+        preparationError,
+        backendMessage,
+      );
+
+      throw new Error(
+        "Não foi possível preparar o arquivo para envio: " +
+          backendMessage,
+      );
+    }
+
+    const preparation =
+      preparationData as {
+        ok?: boolean;
+        message_id?: string;
+        conversation_id?: string;
+        message_type?: OutboundWhatsAppMediaType;
+        bucket?: string;
+        storage_path?: string;
+        upload_token?: string;
+        mime_type?: string;
+        file_name?: string;
+        size_bytes?: number;
+        error?: string;
+      };
+
+    if (
+      preparation.ok !== true ||
+      !preparation.message_id ||
+      preparation.conversation_id !==
+        conversationId ||
+      preparation.message_type !==
+        descriptor.messageType ||
+      !preparation.bucket ||
+      !preparation.storage_path ||
+      !preparation.upload_token
+    ) {
+      throw new Error(
+        preparation.error ??
+          "O backend não retornou os dados necessários para o upload.",
+      );
+    }
+
+    const {
+      error: uploadError,
+    } = await supabase.storage
+      .from(preparation.bucket)
+      .uploadToSignedUrl(
+        preparation.storage_path,
+        preparation.upload_token,
+        file,
+        {
+          contentType:
+            descriptor.mimeType,
+          cacheControl: "3600",
+        },
+      );
+
+    if (uploadError) {
+      await supabase.rpc(
+        "fail_crm_whatsapp_media_upload",
+        {
+          p_organization_id:
+            session.organizationId,
+          p_message_id:
+            preparation.message_id,
+          p_error_message:
+            uploadError.message,
+        },
+      );
+
+      throw new Error(
+        "Não foi possível enviar o arquivo ao armazenamento: " +
+          uploadError.message,
+      );
+    }
+
+    const {
+      data: finalizationData,
+      error: finalizationError,
+    } = await supabase.rpc(
+      "finalize_crm_whatsapp_media_upload",
+      {
+        p_organization_id:
+          session.organizationId,
+        p_message_id:
+          preparation.message_id,
+      },
+    );
+
+    if (finalizationError) {
+      throw new Error(
+        "O arquivo foi armazenado, mas o CRM não conseguiu concluir a preparação: " +
+          finalizationError.message,
+      );
+    }
+
+    const finalization =
+      finalizationData as {
+        finalized?: boolean;
+        message_id?: string;
+        storage_path?: string;
+        status?: string;
+      };
+
+    if (
+      finalization.finalized !== true ||
+      finalization.message_id !==
+        preparation.message_id ||
+      finalization.storage_path !==
+        preparation.storage_path
+    ) {
+      throw new Error(
+        "O banco não confirmou a conclusão do upload.",
+      );
+    }
+
+    const {
+      data: dispatchData,
+      error: dispatchError,
+    } = await supabase.functions.invoke(
+      "dispatch-whatsapp-message",
+      {
+        body: {
+          message_id:
+            preparation.message_id,
+        },
+      },
+    );
+
+    if (dispatchError) {
+      const backendMessage =
+        await readEdgeFunctionError(
+          dispatchError,
+          "A Edge Function recusou o despacho da mídia.",
+        );
+
+      console.error(
+        "[dispatch-whatsapp-message mídia]",
+        dispatchError,
+        backendMessage,
+      );
+
+      throw new Error(
+        "O arquivo foi preparado, mas a função de envio falhou: " +
+          backendMessage,
+      );
+    }
+
+    const dispatchResult =
+      dispatchData as {
+        ok?: boolean;
+        message_id?: string;
+        status?: string;
+        error?: string;
+        warning?: string | null;
+        already_dispatched?: boolean;
+      };
+
+    if (
+      dispatchResult.ok !== true ||
+      dispatchResult.message_id !==
+        preparation.message_id
+    ) {
+      throw new Error(
+        dispatchResult.error ??
+          "A mídia foi armazenada, mas não foi entregue ao WhatsApp.",
+      );
+    }
+
+    if (dispatchResult.warning) {
+      console.warn(
+        "[CRM WhatsApp mídia]",
+        dispatchResult.warning,
+      );
+    }
+
+    return {
+      messageId:
+        preparation.message_id,
+      conversationId,
+      messageType:
+        descriptor.messageType,
+      bucket:
+        preparation.bucket,
+      storagePath:
+        preparation.storage_path,
+      mimeType:
+        descriptor.mimeType,
+      fileName:
+        preparation.file_name ||
+        file.name,
+      sizeBytes:
+        file.size,
+      status:
+        "queued",
+    };
+  }
+
+  async sendWhatsAppTemplate(
+    session: Session,
+    conversationId: string,
+    input: WhatsAppTemplateSendInput,
+  ): Promise<void> {
+    const templateName =
+      input.templateName.trim();
+
+    const languageCode =
+      input.languageCode.trim();
+
+    const bodyPreview =
+      input.bodyPreview.trim();
+
+    const parameters =
+      input.parameters.map((value) =>
+        value.trim(),
+      );
+
+    if (!templateName) {
+      throw new Error(
+        "O nome do template é obrigatório.",
+      );
+    }
+
+    if (!languageCode) {
+      throw new Error(
+        "O idioma do template é obrigatório.",
+      );
+    }
+
+    if (
+      !bodyPreview ||
+      parameters.some(
+        (value) => !value,
+      )
+    ) {
+      throw new Error(
+        "Os dados do template estão incompletos.",
+      );
+    }
+
+    const { data, error } =
+      await supabase.rpc(
+        "send_crm_whatsapp_template",
+        {
+          p_organization_id:
+            session.organizationId,
+
+          p_conversation_id:
+            conversationId,
+
+          p_template_name:
+            templateName,
+
+          p_language_code:
+            languageCode,
+
+          p_parameters:
+            parameters,
+        },
+      );
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const result = data as {
+      message_id?: string;
+      conversation_id?: string;
+      queued?: boolean;
+      status?: string;
+    };
+
+    if (
+      result.queued !== true ||
+      !result.message_id ||
+      result.conversation_id !==
+        conversationId
+    ) {
+      throw new Error(
+        "O banco não confirmou o registro do template.",
+      );
+    }
+
+    const {
+      data: dispatchData,
+      error: dispatchError,
+    } = await supabase.functions.invoke(
+      "dispatch-whatsapp-template",
+      {
+        body: {
+          message_id:
+            result.message_id,
+        },
+      },
+    );
+
+    if (dispatchError) {
+      throw new Error(
+        "O template foi registrado no CRM, mas a função de envio falhou: " +
+          dispatchError.message,
+      );
+    }
+
+    const dispatchResult =
+      dispatchData as {
+        ok?: boolean;
+        message_id?: string;
+        status?: string;
+        error?: string;
+        warning?: string | null;
+        already_dispatched?: boolean;
+      };
+
+    if (
+      dispatchResult.ok !== true ||
+      dispatchResult.message_id !==
+        result.message_id
+    ) {
+      throw new Error(
+        dispatchResult.error ??
+          "O template foi registrado, mas não foi entregue ao WhatsApp.",
+      );
+    }
+
+    if (dispatchResult.warning) {
+      console.warn(
+        "[CRM WhatsApp Template]",
+        dispatchResult.warning,
+      );
+    }
+  }
+
   async transferConversation(
   session: Session,
   conversationId: string,

@@ -14,6 +14,9 @@ import type {
   TaskInput,
   User,
   UserInput,
+  WhatsAppMediaPrepareInput,
+  WhatsAppPreparedMediaMessage,
+  WhatsAppTemplateSendInput,
 } from "../core/types";
 
 export interface CrmGateway {
@@ -66,6 +69,17 @@ openWhatsAppConversation(
     session: Session,
     conversationId: string,
     body: string,
+  ): Promise<void>;
+
+  prepareWhatsAppMedia?(
+    session: Session,
+    conversationId: string,
+    input: WhatsAppMediaPrepareInput,
+  ): Promise<WhatsAppPreparedMediaMessage>;
+  sendWhatsAppTemplate?(
+    session: Session,
+    conversationId: string,
+    input: WhatsAppTemplateSendInput,
   ): Promise<void>;
   transferConversation(
     session: Session,

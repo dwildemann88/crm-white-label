@@ -194,7 +194,11 @@ export function KanbanPage({
           Nenhum funil ativo. Crie ou ative um funil na Administração.
         </div>
       ) : (
-        <div className="kanban-board">
+        <div
+          className="kanban-board"
+          tabIndex={0}
+          aria-label="Quadro Kanban. Use a rolagem horizontal para visualizar todas as etapas."
+        >
           {stages.map((stage) => {
             const list = filtered.filter((lead) => lead.stageId === stage.id);
             return (
@@ -223,6 +227,12 @@ export function KanbanPage({
                   {currency(list.reduce((sum, item) => sum + item.value, 0))}
                 </div>
                 <div className="kanban-cards">
+                  {!list.length && (
+                    <div className="kanban-empty-column">
+                      Nenhum lead nesta etapa.
+                    </div>
+                  )}
+
                   {list.map((lead) => (
                     <LeadCard
                       key={lead.id}
